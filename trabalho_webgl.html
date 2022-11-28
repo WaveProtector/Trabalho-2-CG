@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Projeto</title>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <script src="./twgl.js/twgl.js-master/dist/5.x/twgl-full.js"></script>
+</head>
+
+<body>
+    <canvas id="canvas" width: 100vw; height: 100vh; display: block;></canvas>
+</body>
+<script id="vs" type="notjs">
+            uniform mat4 u_worldViewProjection;
+
+            attribute vec4 position;
+            attribute vec2 texcoord;
+            attribute vec3 normal;
+
+            varying vec4 v_pos;
+            varying vec2 v_texCoord;
+            
+            void main() {
+                v_pos = u_worldViewProjection * position;
+                v_texCoord = texcoord;
+                gl_Position = v_pos;
+            }
+            
+      </script>
+<script id="fs" type="notjs">
+            precision mediump float;
+            varying vec2 v_texCoord;
+            uniform sampler2D textura;
+
+            void main() {
+            gl_FragColor = 0.2*vec4(1.0, 0.0, 0.0, 1.0) + 0.8*texture2D(textura, v_texCoord); //textura com luz ambiente
+            }
+      
+      </script>
+<script>
+    const m4 = twgl.m4;
+    const gl = document.querySelector("canvas").getContext("webgl");
+    const programInfo = twgl.createProgramInfo(gl, ["vs", "fs"]);
+
+    const bufferInfoSol = twgl.primitives.createSphereBufferInfo(gl, 2, 36, 24);
+    var texSol = twgl.createTexture(gl, { src: 'sun.jpg' });
+
+    var uniforms = {};
+
+    function render(time) {
+        time = time * 0.001;
+        twgl.resizeCanvasToDisplaySize(gl.canvas);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+        gl.enable(gl.DEPTH_TEST);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        //Parte da projeção
+        const fov = 30 * Math.PI / 180;
+        const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+        const zNear = 0.5;
+        const zFar = 10;
+        const projection = m4.perspective(fov, aspect, zNear, zFar);
+
+        //Parte da visualização
+        const eye = [0, 0, -10];
+        const target = [0, 0, 0];
+        const up = [0, 1, 0];
+        const camera = m4.lookAt(eye, target, up);
+        const view = m4.inverse(camera);
+
+        //Sol
+        const viewProjection = m4.multiply(projection, view);
+        const world = m4.identity();
+        m4.translate(world, [-3, 0, 0], world);
+        m4.rotateY(world, time * 0.04, world);
+        uniforms.u_world = world;
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texSol;
+
+        //Desenha o sol
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoSol);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoSol);
+
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+</script>
+
+</html>
