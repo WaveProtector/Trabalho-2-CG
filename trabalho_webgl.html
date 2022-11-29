@@ -38,12 +38,19 @@
       
       </script>
 <script>
+
+    const canvas = document.querySelector("canvas");
+    canvas.width = 1000;
+    canvas.height = 700;
+
     const m4 = twgl.m4;
     const gl = document.querySelector("canvas").getContext("webgl");
     const programInfo = twgl.createProgramInfo(gl, ["vs", "fs"]);
 
-    const bufferInfoSol = twgl.primitives.createSphereBufferInfo(gl, 2, 36, 24);
+    const bufferInfoSol = twgl.primitives.createSphereBufferInfo(gl, 0.5, 36, 24);
+    const bufferInfoTerra = twgl.primitives.createSphereBufferInfo(gl, 0.2, 36, 24);
     var texSol = twgl.createTexture(gl, { src: 'sun.jpg' });
+    var texTerra= twgl.createTexture(gl, { src: 'terra.jpg' });
 
     var uniforms = {};
 
@@ -60,7 +67,7 @@
         const fov = 30 * Math.PI / 180;
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
         const zNear = 0.5;
-        const zFar = 10;
+        const zFar = 50;
         const projection = m4.perspective(fov, aspect, zNear, zFar);
 
         //Parte da visualização
@@ -71,9 +78,9 @@
         const view = m4.inverse(camera);
 
         //Sol
-        const viewProjection = m4.multiply(projection, view);
-        const world = m4.identity();
-        m4.translate(world, [-3, 0, 0], world);
+        var viewProjection = m4.multiply(projection, view);
+        var world = m4.identity();
+        //m4.translate(world, [-3, 0, 0], world);
         m4.rotateY(world, time * 0.04, world);
         uniforms.u_world = world;
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
@@ -84,6 +91,22 @@
         twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoSol);
         twgl.setUniforms(programInfo, uniforms);
         twgl.drawBufferInfo(gl, bufferInfoSol);
+
+        //Terra
+        viewProjection = m4.multiply(projection, view);
+        world = m4.identity();
+        m4.rotateY(world, time * 0.5, world);
+        m4.translate(world, [-2, 0, 0], world);
+        m4.rotateY(world, time * 0.04, world);
+        uniforms.u_world = world;
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texTerra;
+
+        //Desenha a terra
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoTerra);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoTerra);
 
         requestAnimationFrame(render);
     }
