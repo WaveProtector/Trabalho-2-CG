@@ -47,12 +47,14 @@
     const gl = document.querySelector("canvas").getContext("webgl");
     const programInfo = twgl.createProgramInfo(gl, ["vs", "fs"]);
 
+    const bufferInfoBackground = twgl.primitives.createPlaneBufferInfo(gl, 50, 35);
     const bufferInfoSol = twgl.primitives.createSphereBufferInfo(gl, 0.7, 36, 24);
     const bufferInfoTerra = twgl.primitives.createSphereBufferInfo(gl, 0.25, 36, 24);
     const bufferInfoLua = twgl.primitives.createSphereBufferInfo(gl, 0.0675, 36, 24);
     const bufferInfoMercurio = twgl.primitives.createSphereBufferInfo(gl, 0.15, 36, 24);
     const bufferInfoVenus = twgl.primitives.createSphereBufferInfo(gl, 0.28, 36, 24);
     const bufferInfoMarte = twgl.primitives.createSphereBufferInfo(gl, 0.15, 36, 24);
+    var texBackground = twgl.createTexture(gl, { src: 'background.jpg' });
     var texSol = twgl.createTexture(gl, { src: 'sun.jpg' });
     var texTerra= twgl.createTexture(gl, { src: 'terra.jpg' });
     var texLua = twgl.createTexture(gl, { src: 'lua.jpg' });
@@ -86,6 +88,21 @@
         const up = [0, 1, 0];
         const camera = m4.lookAt(eye, target, up);
         const view = m4.inverse(camera);
+
+        //Background
+        var viewProjection = m4.multiply(projection, view);
+        var world = m4.identity();
+        m4.rotateY(world, 5, world)
+        m4.translate(world, [0, -10, 0], world);
+        uniforms.u_world = world;
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texBackground;
+
+        //Desenha o background
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoBackground);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoBackground);
 
         //Sol
         var viewProjection = m4.multiply(projection, view);
