@@ -10,6 +10,35 @@
 <body>
     <canvas id="canvas" width: 100vw; height: 100vh; display: block;></canvas>
 </body>
+
+<script id="vs_Sol" type="notjs">
+        uniform mat4 u_worldViewProjection;
+
+        attribute vec4 position;
+        attribute vec2 texcoord;
+        attribute vec3 normal;
+
+        varying vec4 v_pos;
+        varying vec2 v_texCoord;
+
+        void main() {
+            v_pos = u_worldViewProjection * position;
+            v_texCoord = texcoord;
+            gl_Position = v_pos;
+        }
+    </script>
+
+<script id="fs_Sol" type="notjs">
+        precision mediump float;
+        varying vec2 v_texCoord;
+        uniform sampler2D textura;
+
+        void main() {
+            gl_FragColor = 0.2*vec4(1.0, 0.0, 0.0, 1.0) + 0.8*texture2D(textura, v_texCoord); //luz ambiente
+            //gl_FragColor = texture2D(textura, v_texCoord); //textura normal sem aplicação de luz ambiente
+        }
+</script>
+
 <script id="vs" type="notjs">
             uniform mat4 u_worldViewProjection;
 
@@ -83,8 +112,6 @@
                         diffuseColor.a);
                 
                 gl_FragColor = outColor;
-            //gl_FragColor = 0.2*vec4(0.0, 0.0, 0.0, 1.0) + 0.8*texture2D(textura, v_texCoord); //textura com luz ambiente
-            //gl_FragColor = texture2D(textura, v_texCoord);
             }
       
       </script>
@@ -97,6 +124,7 @@
     const m4 = twgl.m4;
     const gl = document.querySelector("canvas").getContext("webgl");
     const programInfo = twgl.createProgramInfo(gl, ["vs", "fs"]);
+    const programInfo_Sol = twgl.createProgramInfo(gl, ["vs_Sol", "fs_Sol"]);
 
     const bufferInfoBackground = twgl.primitives.createPlaneBufferInfo(gl, 50, 35);
     const bufferInfoSol = twgl.primitives.createSphereBufferInfo(gl, 0.7, 36, 24);
@@ -116,13 +144,12 @@
 
 
     const uniforms = {
-    u_lightWorldPos: [1, 8, -10],
+    u_lightWorldPos: [0, 0, 0],
     u_lightColor: [1, 0.8, 0.8, 1],
-    u_ambient: [0, 0, 0, 1],
+    u_ambient: [0.3, 0.3, 0.3, 1],
     u_specular: [1, 1, 1, 1],
     u_shininess: 50,
-    u_specularFactor: 1,
-    //u_diffuse: texSol //cor da componente difusa, neste caso, é a textura
+    u_specularFactor: 2,
     };
 
     function render(time) {
@@ -156,6 +183,7 @@
         uniforms.u_world = world;
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
         uniforms.textura = texBackground;
+        uniforms.u_diffuse = texBackground;
 
         //Desenha o background
         gl.useProgram(programInfo.program);
@@ -166,8 +194,6 @@
         //Sol
         var viewProjection = m4.multiply(projection, view);
         var world = m4.identity();
-        //m4.translate(world, [-3, 0, 0], world);
-        //m4.rotateX(world, 1.5, world);
         m4.rotateY(world, time * 0.04, world);
         uniforms.u_world = world;
         uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
@@ -175,9 +201,9 @@
         uniforms.textura = texSol;
 
         //Desenha o sol
-        gl.useProgram(programInfo.program);
-        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoSol);
-        twgl.setUniforms(programInfo, uniforms);
+        gl.useProgram(programInfo_Sol.program);
+        twgl.setBuffersAndAttributes(gl, programInfo_Sol, bufferInfoSol);
+        twgl.setUniforms(programInfo_Sol, uniforms);
         twgl.drawBufferInfo(gl, bufferInfoSol);
 
         //Terra
@@ -188,8 +214,10 @@
         m4.translate(world, [-5, 0, 0], world);
         m4.rotateY(world, time * 1, world);
         uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
         uniforms.textura = texTerra;
+        uniforms.u_diffuse = texTerra;
 
         //Desenha a terra
         gl.useProgram(programInfo.program);
@@ -207,8 +235,10 @@
         m4.translate(world, [-1.1, 0, 0], world);
         
         uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
         uniforms.textura = texLua;
+        uniforms.u_diffuse = texLua;
 
         //Desenha a lua
         gl.useProgram(programInfo.program);
@@ -224,8 +254,10 @@
         m4.translate(world, [-2, 0, 0], world);
         m4.rotateY(world, time * 1, world);
         uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
         uniforms.textura = texMercurio;
+        uniforms.u_diffuse = texMercurio;
 
         //Desenha mercurio
         gl.useProgram(programInfo.program);
@@ -241,8 +273,10 @@
         m4.translate(world, [-3, 0, 0], world);
         m4.rotateY(world, time * 1, world);
         uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
         uniforms.textura = texVenus;
+        uniforms.u_diffuse = texVenus;
 
         //Desenha venus
         gl.useProgram(programInfo.program);
@@ -258,8 +292,10 @@
         m4.translate(world, [-7, 0, 0], world);
         m4.rotateY(world, time * 1, world);
         uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
         uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
         uniforms.textura = texMarte;
+        uniforms.u_diffuse = texMarte;
 
         //Desenha marte
         gl.useProgram(programInfo.program);
