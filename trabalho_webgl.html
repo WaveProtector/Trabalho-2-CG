@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Projeto</title>
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
+    <script src="./twgl.js/twgl.js-master/dist/5.x/twgl-full.js"></script>
+</head>
+
+<body>
+    <canvas id="canvas" width: 100vw; height: 100vh; display: block;></canvas>
+</body>
+
+<script id="vs_gouraud" type="notjs">
+
+    uniform vec3 u_lightWorldPos;
+    uniform vec4 u_lightColor;
+    uniform vec4 u_ambient;
+    uniform vec4 u_specular;
+    uniform float u_shininess;
+    uniform float u_specularFactor;
+    uniform mat4 u_world;
+    uniform mat4 u_worldInverseTranspose;
+    uniform mat4 u_worldViewProjection;
+    uniform sampler2D textura;
+    uniform sampler2D u_diffuse;
+    uniform mat4 u_viewInverse;
+
+    attribute vec4 position;
+    attribute vec2 texcoord;
+    attribute vec3 normal;
+
+    varying vec2 v_texCoord;
+
+    varying vec4 v_position;
+    varying vec3 v_normal;
+    varying vec3 v_surfaceToLight;
+    varying vec3 v_surfaceToView;
+    varying vec4 v_color;
+
+    vec4 lit(float l ,float h, float m) {
+        return vec4(1.0,
+        max(l, 0.0),
+        (l > 0.0) ? pow(max(0.0, h), m) : 0.0,
+        1.0);
+        //return vec4(ambient, diffuse, specular, 1.0);
+    }
+
+    void main() {
+        v_position = u_worldViewProjection * position;
+        v_texCoord = texcoord;
+        gl_Position = v_position;
+
+        v_normal = (u_worldInverseTranspose * vec4(normal, 0)).xyz;
+        v_surfaceToLight = u_lightWorldPos - (u_world * position).xyz;
+        v_surfaceToView = (u_viewInverse[3] - (u_world * position)).xyz;
+
+        vec4 diffuseColor = texture2D(u_diffuse, v_texCoord);
+
+        vec3 a_normal = normalize(v_normal);
+        vec3 surfaceToLight = normalize(v_surfaceToLight);
+        vec3 surfaceToView = normalize(v_surfaceToView);
+
+        vec3 halfVector = normalize(surfaceToLight + surfaceToView);
+  
+        vec4 litR = lit(dot(a_normal, surfaceToLight), dot(a_normal, halfVector), u_shininess);
+
+        vec4 outColor = vec4((u_lightColor * (diffuseColor * litR.y + diffuseColor * u_ambient + u_specular * litR.z * u_specularFactor)).rgb,diffuseColor.a);
+                
+        v_color = outColor;
+
+    }
+
+</script>
+
+<script id="fs_gouraud" type="notjs">
+
+    precision mediump float;
+
+    varying vec4 v_color;
+
+    void main() {
+        gl_FragColor = v_color;
+    }
+
+</script>
+
+<script id="vs_Sol" type="notjs">
+        uniform mat4 u_worldViewProjection;
+
+        attribute vec4 position;
+        attribute vec2 texcoord;
+        attribute vec3 normal;
+
+        varying vec4 v_pos;
+        varying vec2 v_texCoord;
+
+        void main() {
+            v_pos = u_worldViewProjection * position;
+            v_texCoord = texcoord;
+            gl_Position = v_pos;
+        }
+    </script>
+
+<script id="fs_Sol" type="notjs">
+        precision mediump float;
+        varying vec2 v_texCoord;
+        uniform sampler2D textura;
+
+        void main() {
+            gl_FragColor = 0.2*vec4(1.0, 0.0, 0.0, 1.0) + 0.8*texture2D(textura, v_texCoord); //luz ambiente
+            //gl_FragColor = texture2D(textura, v_texCoord); //textura normal sem aplicação de luz ambiente
+        }
+</script>
+
+<script id="vs_phong" type="notjs">
+            uniform mat4 u_worldViewProjection;
+
+            uniform vec3 u_lightWorldPos;
+            uniform mat4 u_world;
+            uniform mat4 u_viewInverse;
+            uniform mat4 u_worldInverseTranspose;
+
+            attribute vec4 position;
+            attribute vec2 texcoord;
+            attribute vec3 normal;
+
+            varying vec2 v_texCoord;
+
+            varying vec4 v_position;
+            varying vec3 v_normal;
+            varying vec3 v_surfaceToLight;
+            varying vec3 v_surfaceToView;
+            
+            void main() {
+                v_position = u_worldViewProjection * position;
+                v_texCoord = texcoord;
+                gl_Position = v_position;
+
+                v_normal = (u_worldInverseTranspose * vec4(normal, 0)).xyz;
+                v_surfaceToLight = u_lightWorldPos - (u_world * position).xyz;
+                v_surfaceToView = (u_viewInverse[3] - (u_world * position)).xyz;
+            }
+            
+      </script>
+<script id="fs_phong" type="notjs">
+            precision mediump float;
+            varying vec2 v_texCoord;
+            uniform sampler2D textura;
+
+            varying vec4 v_position;
+            varying vec3 v_normal;
+            varying vec3 v_surfaceToLight;
+            varying vec3 v_surfaceToView;
+
+            uniform vec4 u_lightColor;
+            uniform vec4 u_ambient;
+            uniform sampler2D u_diffuse;
+            uniform vec4 u_specular;
+            uniform float u_shininess;
+            uniform float u_specularFactor;
+
+            vec4 lit(float l ,float h, float m) {
+                return vec4(1.0,
+                max(l, 0.0),
+                (l > 0.0) ? pow(max(0.0, h), m) : 0.0,
+                1.0);
+                //return vec4(ambient, diffuse, specular, 1.0);
+            }
+
+            void main() {
+            vec4 diffuseColor = texture2D(u_diffuse, v_texCoord);
+
+            vec3 a_normal = normalize(v_normal);
+            vec3 surfaceToLight = normalize(v_surfaceToLight);
+            vec3 surfaceToView = normalize(v_surfaceToView);
+
+            vec3 halfVector = normalize(surfaceToLight + surfaceToView);
+  
+            vec4 litR = lit(dot(a_normal, surfaceToLight),
+                    dot(a_normal, halfVector), u_shininess);
+
+            vec4 outColor = vec4((
+                u_lightColor * (diffuseColor * litR.y + diffuseColor * u_ambient +
+                            u_specular * litR.z * u_specularFactor)).rgb,
+                        diffuseColor.a);
+                
+                gl_FragColor = outColor;
+            }
+      
+      </script>
+<script>
+
+    const canvas = document.querySelector("canvas");
+    canvas.width = 1500;
+    canvas.height = 740;
+
+    const m4 = twgl.m4;
+    const gl = document.querySelector("canvas").getContext("webgl");
+    const programInfo_phong = twgl.createProgramInfo(gl, ["vs_phong", "fs_phong"]);
+    const programInfo_Sol = twgl.createProgramInfo(gl, ["vs_Sol", "fs_Sol"]);
+    const programInfo_gouraud = twgl.createProgramInfo(gl, ["vs_gouraud", "fs_gouraud"]);
+
+    //Change shading algorithm
+    //const programInfo = programInfo_phong;
+    const programInfo = programInfo_gouraud;
+
+
+    const bufferInfoBackground = twgl.primitives.createPlaneBufferInfo(gl, 50, 35);
+    const bufferInfoSol = twgl.primitives.createSphereBufferInfo(gl, 0.7, 36, 24);
+    const bufferInfoTerra = twgl.primitives.createSphereBufferInfo(gl, 0.25, 36, 24);
+    const bufferInfoLua = twgl.primitives.createSphereBufferInfo(gl, 0.0675, 36, 24);
+    const bufferInfoMercurio = twgl.primitives.createSphereBufferInfo(gl, 0.15, 36, 24);
+    const bufferInfoVenus = twgl.primitives.createSphereBufferInfo(gl, 0.28, 36, 24);
+    const bufferInfoMarte = twgl.primitives.createSphereBufferInfo(gl, 0.15, 36, 24);
+    var texBackground = twgl.createTexture(gl, { src: 'background.jpg' });
+    var texSol = twgl.createTexture(gl, { src: 'sun.jpg' });
+    var texTerra= twgl.createTexture(gl, { src: 'terra.jpg' });
+    var texLua = twgl.createTexture(gl, { src: 'lua.jpg' });
+    var texMercurio = twgl.createTexture(gl, { src: 'mercury.jpg' });
+    var texVenus = twgl.createTexture(gl, { src: 'venus.jpg' });
+    var texMarte = twgl.createTexture(gl, { src: 'mars.jpg' });
+
+
+
+    const uniforms = {
+    u_lightWorldPos: [0, 0, 0],
+    u_lightColor: [1, 0.8, 0.8, 1],
+    u_ambient: [0.3, 0.3, 0.3, 1],
+    u_specular: [1, 1, 1, 1],
+    u_shininess: 50,
+    u_specularFactor: 2,
+    };
+
+    function render(time) {
+        time = time * 0.001;
+        twgl.resizeCanvasToDisplaySize(gl.canvas);
+        gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+        gl.enable(gl.DEPTH_TEST);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        //Parte da projeção
+        const fov = 30 * Math.PI / 180;
+        const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
+        const zNear = 0.5;
+        const zFar = 50;
+        const projection = m4.perspective(fov, aspect, zNear, zFar);
+
+        //Parte da visualização
+        const eye = [0, 0, -10];
+        const target = [0, 0, 0];
+        const up = [0, 1, 0];
+        const camera = m4.lookAt(eye, target, up);
+        const view = m4.inverse(camera);
+
+        //Background
+        var viewProjection = m4.multiply(projection, view);
+        var world = m4.identity();
+        m4.rotateY(world, 5, world)
+        m4.translate(world, [0, -10, 0], world);
+        uniforms.u_world = world;
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texBackground;
+        uniforms.u_diffuse = texBackground;
+
+        //Desenha o background
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoBackground);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoBackground);
+
+        //Sol
+        var viewProjection = m4.multiply(projection, view);
+        var world = m4.identity();
+        m4.rotateY(world, time * 0.04, world);
+        uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texSol;
+
+        //Desenha o sol
+        gl.useProgram(programInfo_Sol.program);
+        twgl.setBuffersAndAttributes(gl, programInfo_Sol, bufferInfoSol);
+        twgl.setUniforms(programInfo_Sol, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoSol);
+
+        //Terra
+        viewProjection = m4.multiply(projection, view);
+        world = m4.identity();
+        //m4.rotateX(world, 1.5, world);
+        m4.rotateY(world, time * 0.5, world);
+        m4.translate(world, [-5, 0, 0], world);
+        m4.rotateY(world, time * 1, world);
+        uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texTerra;
+        uniforms.u_diffuse = texTerra;
+
+        //Desenha a terra
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoTerra);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoTerra);
+
+        //Lua
+        viewProjection = m4.multiply(projection, view);
+        world = m4.identity();
+        //m4.rotateX(world, 1.5, world);
+        m4.rotateY(world, time * 0.5, world);
+        m4.translate(world, [-5, 0, 0], world);
+        m4.rotateY(world, time * 1, world);
+        m4.translate(world, [-1.1, 0, 0], world);
+        
+        uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texLua;
+        uniforms.u_diffuse = texLua;
+
+        //Desenha a lua
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoLua);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoLua);
+
+        //Mercurio
+        viewProjection = m4.multiply(projection, view);
+        world = m4.identity();
+        //m4.rotateX(world, 1.5, world);
+        m4.rotateY(world, time * 1, world);
+        m4.translate(world, [-2, 0, 0], world);
+        m4.rotateY(world, time * 1, world);
+        uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texMercurio;
+        uniforms.u_diffuse = texMercurio;
+
+        //Desenha mercurio
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoMercurio);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoMercurio);
+
+        //Venus
+        viewProjection = m4.multiply(projection, view);
+        world = m4.identity();
+        //m4.rotateX(world, 1.5, world);
+        m4.rotateY(world, time * 0.8, world);
+        m4.translate(world, [-3, 0, 0], world);
+        m4.rotateY(world, time * 1, world);
+        uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texVenus;
+        uniforms.u_diffuse = texVenus;
+
+        //Desenha venus
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoVenus);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoVenus);
+
+        //Marte
+        viewProjection = m4.multiply(projection, view);
+        world = m4.identity();
+        //m4.rotateX(world, 1.5, world);
+        m4.rotateY(world, time * 0.3, world);
+        m4.translate(world, [-7, 0, 0], world);
+        m4.rotateY(world, time * 1, world);
+        uniforms.u_world = world;
+        uniforms.u_worldInverseTranspose = m4.transpose(m4.inverse(world));
+        uniforms.u_worldViewProjection = m4.multiply(viewProjection, world);
+        uniforms.textura = texMarte;
+        uniforms.u_diffuse = texMarte;
+
+        //Desenha marte
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfoMarte);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfoMarte);
+
+        requestAnimationFrame(render);
+    }
+    requestAnimationFrame(render);
+</script>
+
+</html>
